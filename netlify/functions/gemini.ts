@@ -78,7 +78,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: { Allow: 'POST' },
+      headers: { Allow: 'POST', 'Content-Type': 'text/plain' },
       body: 'Method Not Allowed',
     };
   }
@@ -105,8 +105,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
       },
     });
 
-    const jsonText = response.text.trim();
-    const result = JSON.parse(jsonText) as Substitution[];
+    const jsonText = response.text;
+    if (!jsonText) {
+      throw new Error("AI response did not contain any text.");
+    }
+    
+    const result = JSON.parse(jsonText.trim()) as Substitution[];
     
     return {
         statusCode: 200,
