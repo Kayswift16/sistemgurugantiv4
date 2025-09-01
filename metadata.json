@@ -1,0 +1,5 @@
+{
+  "name": "Sistem Guru Ganti SK Long Sebangang",
+  "description": "An intelligent substitute teacher assignment system that uses AI to analyze the school's master schedule and suggest the most suitable replacement for an absent teacher.",
+  "requestFramePermissions": []
+}
