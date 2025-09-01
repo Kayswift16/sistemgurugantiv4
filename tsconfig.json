@@ -1,23 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES2022",                   // Target JavaScript
-    "module": "ESNext",                   // Gunakan ESM
+    "target": "ES2022",
+    "module": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
     "checkJs": false,
-    "jsx": "react-jsx",                    // React 18 JSX transform
-    "strict": true,                        // Semua strict checks
+    "jsx": "react-jsx",
+    "strict": true,
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "noEmit": false,
-    "outDir": "dist",                      // Output folder
+    "outDir": "dist",
     "resolveJsonModule": true,
     "isolatedModules": true
   },
   "include": [
-    "src", 
+    "src",
     "netlify/functions"
   ],
   "exclude": [
