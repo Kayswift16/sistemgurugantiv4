@@ -1,22 +1,27 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "useDefineForClassFields": true,
+    "target": "ES2022",                   // Target JavaScript
+    "module": "ESNext",                   // Gunakan ESM
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
-    "skipLibCheck": true,
+    "checkJs": false,
+    "jsx": "react-jsx",                    // React 18 JSX transform
+    "strict": true,                        // Semua strict checks
+    "moduleResolution": "Node",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noEmit": false,
+    "outDir": "dist",                      // Output folder
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "types": ["node"]
+    "isolatedModules": true
   },
-  "include": ["src", "netlify/functions"],
-  "exclude": ["node_modules", "api"]
+  "include": [
+    "src", 
+    "netlify/functions"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
