@@ -55,6 +55,7 @@ ${absentTeacherDetails}
   `;
 };
 
+
 const responseSchema = {
   type: Type.ARRAY,
   items: {
@@ -77,10 +78,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: {
-        "Allow": "POST",
-        "Content-Type": "text/plain",
-      } as Record<string, string>,
+      headers: { Allow: 'POST', 'Content-Type': 'text/plain' },
       body: 'Method Not Allowed',
     };
   }
@@ -91,6 +89,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (!absentTeachersInfo || !allTeachers || !timetable || !absenceDay) {
         return {
             statusCode: 400,
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ error: "Missing required fields in the request body." })
         };
     }
@@ -117,9 +116,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return {
         statusCode: 200,
         headers: {
-            "Content-Type": "application/json",
-        } as Record<string, string>,
-        body: JSON.stringify(result),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(result)
     };
 
   } catch (error) {
@@ -127,6 +126,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       return {
         statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: `Gagal menjana pelan guru ganti: ${errorMessage}` })
       };
   }
