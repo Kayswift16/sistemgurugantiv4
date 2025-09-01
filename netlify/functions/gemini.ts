@@ -1,24 +1,39 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
+import type { Handler, HandlerEvent } from "@netlify/functions";
 import { GoogleGenAI, Type } from "@google/genai";
-import type { Teacher, ScheduleEntry, Substitution } from '../../src/types';
+import type { Teacher, ScheduleEntry, Substitution } from "../../src/types";
+
+if (!process.env.API_KEY) {
+  throw new Error("API_KEY environment variable is not set");
+}
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const generatePrompt = (
   absentTeachersInfo: { teacher: Teacher; reason: string }[],
   allTeachers: Teacher[],
   timetable: ScheduleEntry[],
-  absenceDay: string,
+  absenceDay: string
 ): string => {
   const upperCaseAbsenceDay = absenceDay.toUpperCase();
-  const relevantTimetableForDay = timetable.filter(entry => entry.day.toUpperCase() === upperCaseAbsenceDay);
-  
-  const absentTeacherDetails = absentTeachersInfo.map(info => 
-    `- ${info.teacher.name} (ID: ${info.teacher.id}), Sebab: ${info.reason || 'Tidak dinyatakan'}`
-  ).join('\n');
-  
-  const absentTeacherIds = absentTeachersInfo.map(info => info.teacher.id);
+  const relevantTimetableForDay = timetable.filter(
+    (entry) => entry.day.toUpperCase() === upperCaseAbsenceDay
+  );
 
-  const absentTeachersSchedules = timetable.filter(entry => 
-    entry.day.toUpperCase() === upperCaseAbsenceDay && absentTeacherIds.includes(entry.teacherId)
+  const absentTeacherDetails = absentTeachersInfo
+    .map(
+      (info) =>
+        `- ${info.teacher.name} (ID: ${info.teacher.id}), Sebab: ${
+          info.reason || "Tidak dinyatakan"
+        }`
+    )
+    .join("\n");
+
+  const absentTeacherIds = absentTeachersInfo.map((info) => info.teacher.id);
+
+  const absentTeachersSchedules = timetable.filter(
+    (entry) =>
+      entry.day.toUpperCase() === upperCaseAbsenceDay &&
+      absentTeacherIds.includes(entry.teacherId)
   );
 
   return `
@@ -28,7 +43,9 @@ const generatePrompt = (
     - Hari Tidak Hadir: ${absenceDay}
     - Senarai Guru Tidak Hadir:
 ${absentTeacherDetails}
-    - Jadual Waktu Penuh Sekolah untuk Hari ${absenceDay}: ${JSON.stringify(relevantTimetableForDay)}
+    - Jadual Waktu Penuh Sekolah untuk Hari ${absenceDay}: ${JSON.stringify(
+    relevantTimetableForDay
+  )}
     - Senarai Semua Guru: ${JSON.stringify(allTeachers)}
 
     TUGASAN:
@@ -43,12 +60,11 @@ ${absentTeacherDetails}
         c. Keutamaan Ketiga: Guru yang mempunyai beban waktu mengajar paling sedikit pada hari tersebut untuk mengimbangi beban kerja.
     6. Sediakan justifikasi ringkas untuk setiap cadangan. Anda mesti memasukkan nama guru yang digantikan dalam justifikasi.
     7. Kembalikan jawapan anda dalam format JSON sahaja, mengikut skema yang ditetapkan. Jangan sertakan sebarang teks atau penjelasan di luar struktur JSON.
-    
+
     Berikut adalah jadual gabungan untuk SEMUA guru yang tidak hadir pada hari ${absenceDay}:
     ${JSON.stringify(absentTeachersSchedules)}
   `;
 };
-
 
 const responseSchema = {
   type: Type.ARRAY,
@@ -64,37 +80,43 @@ const responseSchema = {
       substituteTeacherName: { type: Type.STRING },
       justification: { type: Type.STRING },
     },
-    required: ["day", "time", "class", "subject", "absentTeacherName", "substituteTeacherId", "substituteTeacherName", "justification"]
+    required: [
+      "day",
+      "time",
+      "class",
+      "subject",
+      "absentTeacherName",
+      "substituteTeacherId",
+      "substituteTeacherName",
+      "justification",
+    ],
   },
 };
 
 export const handler: Handler = async (event: HandlerEvent) => {
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      headers: { Allow: 'POST', 'Content-Type': 'text/plain' },
-      body: 'Method Not Allowed',
+      headers: { Allow: "POST", "Content-Type": "application/json" },
+      body: JSON.stringify({ error: "Method Not Allowed" }),
     };
   }
 
   try {
-    if (!process.env.API_KEY) {
-      throw new Error("Pemboleh ubah persekitaran API_KEY tidak ditetapkan pada pelayan.");
-    }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-    const { absentTeachersInfo, allTeachers, timetable, absenceDay } = JSON.parse(event.body || '{}');
+    const { absentTeachersInfo, allTeachers, timetable, absenceDay } = JSON.parse(
+      event.body || "{}"
+    );
 
     if (!absentTeachersInfo || !allTeachers || !timetable || !absenceDay) {
-        return {
-            statusCode: 400,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: "Medan yang diperlukan tiada dalam badan permintaan." })
-        };
+      return {
+        statusCode: 400,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: "Missing required fields in the request body." }),
+      };
     }
-    
+
     const prompt = generatePrompt(absentTeachersInfo, allTeachers, timetable, absenceDay);
-    
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
@@ -105,28 +127,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
       },
     });
 
-    const jsonText = response.text;
-    if (!jsonText) {
-      throw new Error("Respons daripada AI tidak mengandungi sebarang teks.");
-    }
-    
-    const result = JSON.parse(jsonText.trim()) as Substitution[];
-    
-    return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(result)
-    };
+    const jsonText = response.text?.trim();
+    if (!jsonText) throw new Error("AI response is empty");
 
-  } catch (error) {
-      console.error("Ralat dalam fungsi Netlify:", error);
-      const errorMessage = error instanceof Error ? error.message : "Berlaku ralat yang tidak diketahui.";
-      return {
-        statusCode: 500,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: `Gagal menjana pelan guru ganti: ${errorMessage}` })
-      };
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: jsonText,
+    };
+  } catch (err: any) {
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: err.message || "Internal server error" }),
+    };
   }
 };
