@@ -55,7 +55,6 @@ ${absentTeacherDetails}
   `;
 };
 
-
 const responseSchema = {
   type: Type.ARRAY,
   items: {
@@ -78,7 +77,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: { Allow: 'POST', 'Content-Type': 'text/plain' },
+      headers: {
+        "Allow": "POST",
+        "Content-Type": "text/plain",
+      } as Record<string, string>,
       body: 'Method Not Allowed',
     };
   }
@@ -87,11 +89,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const { absentTeachersInfo, allTeachers, timetable, absenceDay } = JSON.parse(event.body || '{}');
 
     if (!absentTeachersInfo || !allTeachers || !timetable || !absenceDay) {
-        return {
-            statusCode: 400,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: "Missing required fields in the request body." })
-        };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing required fields in the request body." })
+      };
     }
     
     const prompt = generatePrompt(absentTeachersInfo, allTeachers, timetable, absenceDay);
@@ -106,28 +107,28 @@ export const handler: Handler = async (event: HandlerEvent) => {
       },
     });
 
-    const jsonText = response.text;
-    if (!jsonText) {
+    // ✅ Proper extraction of Gemini response text
+    const rawText = response.output[0]?.content[0]?.text ?? "";
+    if (!rawText) {
       throw new Error("AI response did not contain any text.");
     }
-    
-    const result = JSON.parse(jsonText.trim()) as Substitution[];
+
+    const result = JSON.parse(rawText.trim()) as Substitution[];
     
     return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(result)
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+      } as Record<string, string>,
+      body: JSON.stringify(result),
     };
 
   } catch (error) {
-      console.error("Error in Netlify function:", error);
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-      return {
-        statusCode: 500,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: `Gagal menjana pelan guru ganti: ${errorMessage}` })
-      };
+    console.error("Error in Netlify function:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: `Gagal menjana pelan guru ganti: ${errorMessage}` })
+    };
   }
 };
