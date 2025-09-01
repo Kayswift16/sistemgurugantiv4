@@ -37,33 +37,33 @@ const generatePrompt = (
   );
 
   return `
-    Anda adalah Penolong Kanan Pentadbiran yang bijak di sebuah sekolah. Tugas anda adalah untuk mencari guru ganti terbaik untuk SEMUA guru yang tidak hadir pada hari tertentu.
+Anda adalah Penolong Kanan Pentadbiran yang bijak di sebuah sekolah. Tugas anda adalah untuk mencari guru ganti terbaik untuk SEMUA guru yang tidak hadir pada hari tertentu.
 
-    MAKLUMAT KES:
-    - Hari Tidak Hadir: ${absenceDay}
-    - Senarai Guru Tidak Hadir:
+MAKLUMAT KES:
+- Hari Tidak Hadir: ${absenceDay}
+- Senarai Guru Tidak Hadir:
 ${absentTeacherDetails}
-    - Jadual Waktu Penuh Sekolah untuk Hari ${absenceDay}: ${JSON.stringify(
+- Jadual Waktu Penuh Sekolah untuk Hari ${absenceDay}: ${JSON.stringify(
     relevantTimetableForDay
   )}
-    - Senarai Semua Guru: ${JSON.stringify(allTeachers)}
+- Senarai Semua Guru: ${JSON.stringify(allTeachers)}
 
-    TUGASAN:
-    Berdasarkan data yang diberikan, sila laksanakan langkah-langkah berikut untuk hari ${absenceDay} SAHAJA:
-    1. Untuk SETIAP guru yang tidak hadir, kenal pasti semua slot waktu mengajar mereka.
-    2. PENTING: Guru yang berada dalam "Senarai Guru Tidak Hadir" TIDAK BOLEH dicadangkan sebagai guru ganti.
-    3. Untuk setiap slot yang kosong, cari semua guru yang berkelapangan (tidak mempunyai kelas dan tidak termasuk dalam senarai guru tidak hadir).
-    4. Daripada senarai guru yang berkelapangan itu, cadangkan SATU guru ganti yang paling sesuai untuk setiap slot. Elakkan seorang guru ganti ditugaskan pada dua kelas yang berbeza pada masa yang sama.
-    5. Gunakan kriteria berikut untuk membuat cadangan:
-        a. Keutamaan Tertinggi: Guru yang mengajar subjek yang sama.
-        b. Keutamaan Kedua: Guru yang mengajar di tahun (kelas) yang sama.
-        c. Keutamaan Ketiga: Guru yang mempunyai beban waktu mengajar paling sedikit pada hari tersebut untuk mengimbangi beban kerja.
-    6. Sediakan justifikasi ringkas untuk setiap cadangan. Anda mesti memasukkan nama guru yang digantikan dalam justifikasi.
-    7. Kembalikan jawapan anda dalam format JSON sahaja, mengikut skema yang ditetapkan. Jangan sertakan sebarang teks atau penjelasan di luar struktur JSON.
+TUGASAN:
+Berdasarkan data yang diberikan, sila laksanakan langkah-langkah berikut untuk hari ${absenceDay} SAHAJA:
+1. Untuk SETIAP guru yang tidak hadir, kenal pasti semua slot waktu mengajar mereka.
+2. PENTING: Guru yang berada dalam "Senarai Guru Tidak Hadir" TIDAK BOLEH dicadangkan sebagai guru ganti.
+3. Untuk setiap slot yang kosong, cari semua guru yang berkelapangan (tidak mempunyai kelas dan tidak termasuk dalam senarai guru tidak hadir).
+4. Daripada senarai guru yang berkelapangan itu, cadangkan SATU guru ganti yang paling sesuai untuk setiap slot. Elakkan seorang guru ganti ditugaskan pada dua kelas yang berbeza pada masa yang sama.
+5. Gunakan kriteria berikut untuk membuat cadangan:
+    a. Keutamaan Tertinggi: Guru yang mengajar subjek yang sama.
+    b. Keutamaan Kedua: Guru yang mengajar di tahun (kelas) yang sama.
+    c. Keutamaan Ketiga: Guru yang mempunyai beban waktu mengajar paling sedikit pada hari tersebut untuk mengimbangi beban kerja.
+6. Sediakan justifikasi ringkas untuk setiap cadangan. Anda mesti memasukkan nama guru yang digantikan dalam justifikasi.
+7. Kembalikan jawapan anda dalam format JSON sahaja, mengikut skema yang ditetapkan. Jangan sertakan sebarang teks atau penjelasan di luar struktur JSON.
 
-    Berikut adalah jadual gabungan untuk SEMUA guru yang tidak hadir pada hari ${absenceDay}:
-    ${JSON.stringify(absentTeachersSchedules)}
-  `;
+Berikut adalah jadual gabungan untuk SEMUA guru yang tidak hadir pada hari ${absenceDay}:
+${JSON.stringify(absentTeachersSchedules)}
+`;
 };
 
 const responseSchema = {
@@ -97,7 +97,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      headers: { Allow: "POST", "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Allow: "POST" } as Record<
+        string,
+        string
+      >,
       body: JSON.stringify({ error: "Method Not Allowed" }),
     };
   }
@@ -110,8 +113,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (!absentTeachersInfo || !allTeachers || !timetable || !absenceDay) {
       return {
         statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ error: "Missing required fields in the request body." }),
+        headers: { "Content-Type": "application/json" } as Record<string, string>,
+        body: JSON.stringify({ error: "Missing required fields in request body" }),
       };
     }
 
@@ -122,7 +125,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: responseSchema,
+        responseSchema,
         temperature: 0.2,
       },
     });
@@ -130,16 +133,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const jsonText = response.text?.trim();
     if (!jsonText) throw new Error("AI response is empty");
 
+    const result = JSON.parse(jsonText) as Substitution[];
+
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: jsonText,
+      headers: { "Content-Type": "application/json" } as Record<string, string>,
+      body: JSON.stringify(result),
     };
   } catch (err: any) {
+    console.error("Error in Netlify function:", err);
+
     return {
       statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: err.message || "Internal server error" }),
+      headers: { "Content-Type": "application/json" } as Record<string, string>,
+      body: JSON.stringify({ error: `Gagal menjana pelan guru ganti: ${err.message}` }),
     };
   }
 };
